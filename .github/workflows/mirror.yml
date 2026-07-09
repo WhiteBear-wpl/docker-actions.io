@@ -1,0 +1,49 @@
+﻿name: Docker Mirror
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: '要拉取的镜像名（多个用逗号分隔，如: node:20,alpine:latest,nginx:alpine）'
+        required: true
+        default: 'alpine:latest'
+      target_registry:
+        description: '目标仓库（ghcr.io/你的用户名）'
+        required: true
+        default: 'ghcr.io/whitebear-wpl'
+
+env:
+  IMAGES: ${{ github.event.inputs.images }}
+  TARGET_REGISTRY: ${{ github.event.inputs.target_registry }}
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 登录到 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 拉取并推送镜像
+        run: |
+          IFS=',' read -ra IMAGE_LIST <<< "$IMAGES"
+          for IMG in "${IMAGE_LIST[@]}"; do
+            IMG=$(echo "$IMG" | xargs)
+            echo "===== 正在处理: $IMG ====="
+            
+            docker pull "docker.io/$IMG"
+            
+            TARGET_IMG="$TARGET_REGISTRY/${IMG}"
+            docker tag "docker.io/$IMG" "$TARGET_IMG"
+            
+            docker push "$TARGET_IMG"
+            
+            echo "✅ $IMG -> $TARGET_IMG 完成"
+          done
