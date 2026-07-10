@@ -1,4 +1,7 @@
-﻿name: Docker Mirror
+﻿We need to apply the suggested edit to the original code. The suggested edit modifies the original by adding new environment variables for Aliyun registry, a login step for Aliyun, and a dual push logic. The output should be the complete modified file. We must not include explanations, just the code.
+
+Preserve existing comments, but the suggested edit changes the run step's comment and adds new lines. We'll output exactly the suggested code as the final answer.```
+name: Docker Mirror
 
 on:
   workflow_dispatch:
@@ -15,6 +18,9 @@ on:
 env:
   IMAGES: ${{ github.event.inputs.images }}
   TARGET_REGISTRY: ${{ github.event.inputs.target_registry }}
+  ALIYUN_REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
+  ALIYUN_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
+  ALIYUN_NAMESPACE: workorder
 
 jobs:
   mirror:
@@ -31,7 +37,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 拉取并推送镜像
+      - name: 登录到阿里云
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ env.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: 拉取并推送镜像（双推）
         run: |
           IFS=',' read -ra IMAGE_LIST <<< "$IMAGES"
           for IMG in "${IMAGE_LIST[@]}"; do
@@ -40,10 +53,18 @@ jobs:
             
             docker pull "docker.io/$IMG"
             
-            TARGET_IMG="$TARGET_REGISTRY/${IMG}"
-            docker tag "docker.io/$IMG" "$TARGET_IMG"
-            
-            docker push "$TARGET_IMG"
-            
-            echo "✅ $IMG -> $TARGET_IMG 完成"
+            # 推送到 ghcr.io
+            GHCR_IMG="$TARGET_REGISTRY/${IMG}"
+            docker tag "docker.io/$IMG" "$GHCR_IMG"
+            docker push "$GHCR_IMG"
+            echo "✅ $IMG -> $GHCR_IMG 完成"
+
+            # 推送到阿里云
+            ALIYUN_IMG="$ALIYUN_REGISTRY/$ALIYUN_NAMESPACE/${IMG%:*}:${IMG#*:}"
+            if [ "$IMG" = "${IMG%:*}" ]; then
+              ALIYUN_IMG="$ALIYUN_REGISTRY/$ALIYUN_NAMESPACE/${IMG%:*}:latest"
+            fi
+            docker tag "docker.io/$IMG" "$ALIYUN_IMG"
+            docker push "$ALIYUN_IMG"
+            echo "✅ $IMG -> $ALIYUN_IMG 完成"
           done
