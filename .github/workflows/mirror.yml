@@ -1,6 +1,3 @@
-﻿We need to apply the suggested edit to the original code. The suggested edit modifies the original by adding new environment variables for Aliyun registry, a login step for Aliyun, and a dual push logic. The output should be the complete modified file. We must not include explanations, just the code.
-
-Preserve existing comments, but the suggested edit changes the run step's comment and adds new lines. We'll output exactly the suggested code as the final answer.```
 name: Docker Mirror
 
 on:
