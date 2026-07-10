@@ -17,7 +17,7 @@ env:
   TARGET_REGISTRY: ${{ github.event.inputs.target_registry }}
   ALIYUN_REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
   ALIYUN_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
-  ALIYUN_NAMESPACE: workorder
+  ALIYUN_NAMESPACE: workorder0
 
 jobs:
   mirror:
